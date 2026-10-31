@@ -121,16 +121,19 @@ function mapFilter(
   switch (operator) {
     case OPERATORS.equals:
       return `${table}.${column} = ANY(${value})`;
+    // The negative filters keep rows where the column is empty: "tag is not
+    // dc-aws" must keep the visits that have no tag at all, and in SQL
+    // NULL != 'x' is not true.
     case OPERATORS.notEquals:
-      return `${table}.${column} != ALL(${value})`;
+      return `coalesce(${table}.${column}, '') != ALL(${value})`;
     case OPERATORS.contains:
       return `${table}.${column} ilike ${value}`;
     case OPERATORS.doesNotContain:
-      return `${table}.${column} not ilike ${value}`;
+      return `coalesce(${table}.${column}, '') not ilike ${value}`;
     case OPERATORS.regex:
       return `${table}.${column} ~* ${value}`;
     case OPERATORS.notRegex:
-      return `${table}.${column} !~* ${value}`;
+      return `coalesce(${table}.${column}, '') !~* ${value}`;
     default:
       return '';
   }

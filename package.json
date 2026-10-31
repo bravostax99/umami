@@ -12,7 +12,7 @@
   "type": "module",
   "scripts": {
     "dev": "dotenv next dev --turbo",
-    "build": "npm-run-all check-env build-db check-db build-tracker build-recorder build-geo build-app",
+    "build": "npm-run-all check-env build-db check-db build-tracker build-recorder build-geo build-cloud-ranges build-app",
     "start": "next start",
     "build-docker": "npm-run-all build-db build-tracker build-recorder build-geo build-app",
     "start-docker": "npm-run-all check-db update-tracker start-server",
@@ -26,6 +26,7 @@
     "build-prisma-client": "node scripts/build-prisma-client.js",
     "build-lang": "npm-run-all download-country-names download-language-names",
     "build-geo": "node scripts/build-geo.js",
+    "build-cloud-ranges": "node scripts/build-cloud-ranges.js",
     "build-db": "npm-run-all build-db-client build-prisma-client",
     "build-db-schema": "prisma db pull",
     "build-db-client": "prisma generate",

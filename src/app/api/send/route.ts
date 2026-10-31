@@ -4,6 +4,7 @@ import { z } from 'zod';
 import clickhouse from '@/lib/clickhouse';
 import { CACHE_TOKEN_TYPE, COLLECTION_TYPE, EVENT_TYPE } from '@/lib/constants';
 import { getSalt, hash, secret, uuid } from '@/lib/crypto';
+import { cloudProvider } from '@/lib/cloud';
 import { getClientInfo, hasBlockedIp } from '@/lib/detect';
 import { createToken, parseToken } from '@/lib/jwt';
 import { fetchWebsite } from '@/lib/load';
@@ -144,6 +145,12 @@ export async function POST(request: Request) {
       return forbidden();
     }
 
+    // Cloud and data-centre networks: crawlers in a real browser, and email
+    // security services opening links. Kept, but tagged so reports can leave
+    // them out (lib/cloud.ts). This replaces any tag the page set.
+    const cloud = cloudProvider(ip);
+    const eventTag = cloud ? `dc-${cloud}` : tag;
+
     const createdAt = timestamp ? new Date(timestamp * 1000) : new Date();
     const now = Math.floor(Date.now() / 1000);
 
@@ -259,7 +266,7 @@ export async function POST(request: Request) {
         // Events
         eventName: name,
         eventData: data,
-        tag,
+        tag: eventTag,
 
         // UTM
         utmSource,

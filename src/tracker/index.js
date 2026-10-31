@@ -93,6 +93,8 @@
 
     if (currentUrl !== currentRef && autoPageview) {
       setTimeout(track, delayDuration);
+      // A second page in the same visit counts as engaged.
+      setTimeout(engage, delayDuration);
     }
   };
 
@@ -195,6 +197,72 @@
     }
   };
 
+  /* Engagement: one 'engaged' event per visit, after 10 seconds with the page
+     visible, a scroll, a click or key press, or a second page. Email link
+     scanners and most crawlers do none of these, so engaged visitors are the
+     people. The visit is remembered for this tab (sessionStorage). */
+
+  const ENGAGED = 'umami.engaged';
+  const SEEN = 'umami.seen';
+  let engaged = false;
+  let stopEngagement;
+
+  function engage() {
+    if (engaged) return;
+    engaged = true;
+    if (stopEngagement) stopEngagement();
+    try {
+      window.sessionStorage.setItem(ENGAGED, _true);
+    } catch {
+      /* storage blocked: counted once on this page */
+    }
+    track('engaged');
+  }
+
+  const initEngagement = () => {
+    try {
+      const store = window.sessionStorage;
+      if (store.getItem(ENGAGED)) {
+        engaged = true;
+        return;
+      }
+      if (store.getItem(SEEN)) return engage();
+      store.setItem(SEEN, _true);
+    } catch {
+      /* storage blocked: time and actions still count */
+    }
+
+    let left = 10000;
+    let started = 0;
+    let timer;
+    const run = () => {
+      started = Date.now();
+      timer = setTimeout(engage, left);
+    };
+    const pause = () => {
+      clearTimeout(timer);
+      left -= Date.now() - started;
+    };
+    const onVisibility = () => (document.visibilityState === 'visible' ? run() : pause());
+    // A real scroll, not the browser restoring the position on load.
+    const onScroll = () => window.scrollY > 100 && engage();
+    const opts = { capture: true, passive: true };
+
+    stopEngagement = () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('scroll', onScroll, opts);
+      document.removeEventListener('click', engage, opts);
+      document.removeEventListener('keydown', engage, opts);
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('scroll', onScroll, opts);
+    document.addEventListener('click', engage, opts);
+    document.addEventListener('keydown', engage, opts);
+    if (document.visibilityState === 'visible') run();
+  };
+
   const init = () => {
     if (!initialized) {
       initialized = true;
@@ -202,6 +270,7 @@
       handlePathChanges();
       handleClicks();
       if (perf) initPerformance();
+      initEngagement();
     }
   };
 
